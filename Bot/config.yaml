@@ -1,0 +1,33 @@
+symbols:
+  perp: BTCUSDT
+sampling:
+  interval_sec: 10
+signals:
+  enter_band_usd: 50
+  persistence_n: 3
+  exit_band_low_usd: 350
+  exit_band_high_usd: 450
+  max_hold_sec: 3600
+  dynamic_window_sec: 3600
+costs:
+  taker_fee: 0.0006
+  slippage_usd: 0.2
+risk:
+  stop_band_usd: -100
+  max_pos_btc: 0.01
+execution:
+  max_leverage: 10
+  size_from_best_qty: true
+  safety_cooldown_sec: 30
+exchanges:
+  bybit:
+    api_key: ""
+    api_secret: ""
+    base_url: "https://api.bybit.com"
+  fgrd:
+    api_key: ""
+    api_secret: ""
+    base_url: "https://api.fgrcbit.com"
+ops:
+  log_level: INFO
+  dry_run: true

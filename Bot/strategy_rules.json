@@ -1,0 +1,21 @@
+{
+  "entry": {
+    "type": "abs_spread_lte",
+    "threshold": 75.0,
+    "consecutive": 2
+  },
+  "exit": {
+    "take_profit": {
+      "type": "spread_gte",
+      "threshold": 300.0,
+      "consecutive": 3
+    },
+    "stop_loss": {
+      "type": "spread_lte",
+      "threshold": -200.0,
+      "consecutive": 3
+    },
+    "min_hold_sec": 60.0,
+    "max_hold_sec": 10800.0
+  }
+}

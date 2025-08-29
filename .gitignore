@@ -1,0 +1,19 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+# logs
+*.log
+compare_logger.log
+# data dumps
+compare_10s.csv
+prices.csv
+orderbook_last_10s.csv
+spot_orderbook_10s.csv
+swap_orderbook_10s.csv
+# backtest outputs
+Bot/backtest/out/**
+Bot/backtest/out_tuned/**
+# analysis outputs
+trading_strategy/img/**
+trading_strategy/*.csv
