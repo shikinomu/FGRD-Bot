@@ -21,13 +21,15 @@ execution:
   safety_cooldown_sec: 30
 exchanges:
   bybit:
-    api_key: ""
-    api_secret: ""
-    base_url: "https://api.bybit.com"
+    api_key: ''
+    api_secret: ''
+    base_url: https://api.bybit.com
   fgrd:
-    api_key: ""
-    api_secret: ""
-    base_url: "https://api.fgrcbit.com"
+    api_key: ''
+    api_secret: ''
+    base_url: https://api.fgrcbit.com
+    bearer_token: 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvYXBpLmZncmNiaXQuY29tXC9hcGlcL3VzZXJcL2xvZ2luIiwiaWF0IjoxNzU2MzcwOTg2LCJleHAiOjE3NjE1NTQ5ODYsIm5iZiI6MTc1NjM3MDk4NiwianRpIjoiMGdaYndURGRtNUhrVjJFMyIsInN1YiI6NTAxMzA5LCJwcnYiOiIyM2JkNWM4OTQ5ZjYwMGFkYjM5ZTcwMWM0MDA4NzJkYjdhNTk3NmY3IiwibG9naW5fY29kZSI6InB0UWtBdXlzSnkifQ.C2owAxNN08R5kYJBQXPsDlLZdBdlnyjQfkeNXmP61i0'
+    cookie: ''
 ops:
   log_level: INFO
   dry_run: true

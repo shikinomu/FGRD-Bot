@@ -81,3 +81,184 @@
 - 当該ログ（署名部は伏せても可）を共有ください。すぐに `exchanges/fgrd.py` の実装に着手します。
 
 参考: リポジトリ `FGRD-Bot` に実装を継続反映します（`main` ブランチ）。
+
+---
+
+### 7) 実装ノウハウ（確定事項）
+- 認証は JWT を `authorization: bearer <JWT>` で送る（先頭は小文字の bearer）。
+- 共通ヘッダ（成功確認済み）
+  - `accept: application/json, text/plain, */*`
+  - `accept-language: ja;q=0.5`
+  - `authorization: bearer <JWT>`
+  - `lang: en`
+  - `origin: https://btcfgrd.com`, `referer: https://btcfgrd.com/`
+  - `user-agent: Chrome系`, `x-requested-with: XMLHttpRequest`
+  - `sec-*` 系ヘッダはそのまま送れば可
+- POST空ボディでは `content-length: 0` を付与（`content-type` は不要）。
+- HTTP/2対応のクライアントでも動作するが、実運用では cURL互換ヘッダでの送信が最も安定。
+
+主要エンドポイント（資産系）
+- GET `/api/wallet/accounts`（口座一覧）
+- POST `/api/user/personalAssets`（資産サマリ）
+- POST `/api/user/fundAccount`（資金口座）
+
+cURL例
+```bash
+curl -s 'https://api.fgrcbit.com/api/user/personalAssets' -X POST \
+  -H 'accept: application/json, text/plain, */*' -H 'accept-language: ja;q=0.5' \
+  -H 'authorization: bearer <JWT>' -H 'content-length: 0' -H 'lang: en' \
+  -H 'origin: https://btcfgrd.com' -H 'referer: https://btcfgrd.com/' \
+  -H 'user-agent: Mozilla/5.0' -H 'x-requested-with: XMLHttpRequest'
+
+curl -s 'https://api.fgrcbit.com/api/user/fundAccount' -X POST \
+  -H 'accept: application/json, text/plain, */*' -H 'accept-language: ja;q=0.5' \
+  -H 'authorization: bearer <JWT>' -H 'content-length: 0' -H 'lang: en' \
+  -H 'origin: https://btcfgrd.com' -H 'referer: https://btcfgrd.com/' \
+  -H 'user-agent: Mozilla/5.0' -H 'x-requested-with: XMLHttpRequest'
+
+curl -s 'https://api.fgrcbit.com/api/wallet/accounts' \
+  -H 'accept: application/json, text/plain, */*' -H 'accept-language: ja;q=0.5' \
+  -H 'authorization: bearer <JWT>' -H 'lang: en' \
+  -H 'origin: https://btcfgrd.com' -H 'referer: https://btcfgrd.com/'
+```
+
+トークンの取得（Web UI）
+- DevTools → Network → 対象リクエスト（例: `/api/wallet/accounts`）→ Headers → `Authorization` をコピー
+- あるいは `localStorage.getItem('token')`（実装により鍵名は異なる）
+
+---
+
+### 8) Bot配線（現状）
+- `Bot/core/engine.py` にて 60秒ごとに以下を取得し `Bot/account_snapshot.csv` に追記
+  - GET `/api/wallet/accounts`
+  - POST `/api/user/fundAccount`
+- 送信は cURL フォールバック（subprocess）で cURL と同一ヘッダを送信
+- `personalAssets` は同ルートで拡張可能
+
+---
+
+### 9) トラブルシュート
+- `Not logged in` の場合:
+  - Authorization が空／`bearer` が無い／トークン失効の可能性
+  - POST空ボディは `content-length: 0` 必須
+- Cookie は現状不要（Network に `cookie:` 無し）。`config.yaml` に項目は用意済み。
+
+---
+
+### 10) セキュリティ
+- `bearer_token` はローカル `Bot/config.yaml` のみに保存。Gitへコミットしないこと。
+- トークンの定期更新とローテーションを推奨。
+
+---
+
+### 11) 契約（先物）発注/取消・未約定一覧（確定）
+
+#### 共通
+- Base: `https://api.fgrcbit.com`
+- 認証: `authorization: bearer <JWT>`（小文字 `bearer`）
+- ヘッダ例（成功実績あり）
+  - `accept: application/json, text/plain, */*`
+  - `accept-language: ja;q=0.5`
+  - `lang: en`
+  - `origin: https://btcfgrd.com`, `referer: https://btcfgrd.com/`
+  - `user-agent: Chrome系`, `x-requested-with: XMLHttpRequest`
+  - `sec-*` 一式
+
+#### 11.1 発注（Limit）
+- POST `/api/contract/openPosition`
+- Payload（JSON）
+  - `side`（int）: 1=買い/ロング（ユーザー確認済み）
+  - `symbol`（str）: 例 `"BTC"`
+  - `type`（int）: 1=Limit（暫定。今後の差分は実測で更新）
+  - `entrust_price`（str|number）: 例 `"105000"`
+  - `amount`（number）: 契約数量。ユーザー確認で「1=1BTC分」
+  - `lever_rate`（str|int）: 例 `25`
+
+curl 例（実績）
+```bash
+curl 'https://api.fgrcbit.com/api/contract/openPosition' \
+  -H 'accept: application/json, text/plain, */*' \
+  -H 'accept-language: ja;q=0.5' \
+  -H 'authorization: bearer <JWT>' \
+  -H 'content-type: application/json;charset=UTF-8' \
+  -H 'lang: en' -H 'origin: https://btcfgrd.com' -H 'referer: https://btcfgrd.com/' \
+  --data-raw '{"side":1,"symbol":"BTC","type":1,"entrust_price":"105000","amount":1,"lever_rate":"25"}'
+```
+
+売り（ショート）例（side=2）
+```bash
+curl 'https://api.fgrcbit.com/api/contract/openPosition' \
+  -H 'accept: application/json, text/plain, */*' \
+  -H 'accept-language: ja;q=0.5' \
+  -H 'authorization: bearer <JWT>' \
+  -H 'content-type: application/json;charset=UTF-8' \
+  -H 'lang: en' -H 'origin: https://btcfgrd.com' -H 'referer: https://btcfgrd.com/' \
+  --data-raw '{"side":2,"symbol":"BTC","type":1,"entrust_price":"120009","amount":1,"lever_rate":"25"}'
+```
+
+レスポンス例
+```json
+{"code":200,"message":"Entrust the success","data":null}
+```
+注意: `data` が `null` のため、発注直後の `entrust_id` は未約定一覧から取得する。
+
+#### 11.2 未約定一覧（open orders）
+- GET `/api/contract/getCurrentEntrust?page=1`
+- レスポンス例（抜粋）
+```json
+{
+  "code":200,
+  "data":{
+    "data":[{
+      "id":180778,
+      "order_no":"PCB175...",
+      "order_type":1,
+      "side":1,
+      "symbol":"BTC",
+      "type":1,
+      "entrust_price":110656,
+      "amount":1,
+      "lever_rate":25,
+      "status":1,
+      "hang_status":1
+    }]}
+}
+```
+- `entrust_id` は `id` または `entrust_id` として返る。直近の注文は `symbol/side/entrust_price/status=1` で特定。
+
+#### 11.3 取消（Cancel）
+- POST `/api/contract/cancelEntrust`
+- Payload（JSON）
+  - `symbol`（str）: 例 `"BTC"`
+  - `entrust_id`（int）: 未約定一覧の `id`（または `entrust_id`）
+
+curl 例（実績）
+```bash
+curl 'https://api.fgrcbit.com/api/contract/cancelEntrust' \
+  -H 'accept: application/json, text/plain, */*' \
+  -H 'accept-language: ja;q=0.5' \
+  -H 'authorization: bearer <JWT>' \
+  -H 'content-type: application/json;charset=UTF-8' \
+  -H 'lang: en' -H 'origin: https://btcfgrd.com' -H 'referer: https://btcfgrd.com/' \
+  --data-raw '{"symbol":"BTC","entrust_id":180779}'
+```
+レスポンス例: `{ "code":200, "message":"success", "data":null }`
+
+#### 11.4 上限取得（参考）
+- GET `/api/contract/openNum?symbol=BTC&lever_rate=25`（建玉可能数量等を返す）
+
+#### 11.5 Bot 実装（対応状況）
+- `exchanges/fgrd.py`
+  - `create_limit_order(symbol, side, price, amount, lever_rate=25, order_type=1)`
+  - `get_current_entrust(page=1)`
+  - `cancel_order(entrust_id=..., symbol=...)`
+  - 送信は cURL 互換ヘッダで安定運用（subprocess フォールバック）
+- `order_smoke.py`（スモーク）
+  - 105000 で 1BTC 買い指値 → `getCurrentEntrust` で `entrust_id` 取得 → 20秒後に `cancelEntrust`
+  - 実績: `entrust_id=180782` を抽出し、`code=200 success` で取消確認済み
+
+#### 11.6 パラメータ備考
+- side: 1=買い/ロング（ユーザー確認済み）
+- type: 1=Limit（暫定。将来の変更に備えて実測で随時更新）
+- amount: 1=1BTC 分（ユーザー確認済み）。単位定義に変更が入った場合は再確認
+
